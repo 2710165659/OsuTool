@@ -2,12 +2,14 @@ name: Deploy Vue3 to GitHub Pages
 
 on:
   push:
-    branches: [master]  # 只在 main 分支推送时触发
+    branches: [master]  # 只在 master 分支推送时触发
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    permissions: # 提升 token 权限
+        contents: write  # 允许推送代码
+        pages: write    # 允许操作 GitHub Pages
     steps:
       - uses: actions/checkout@v4
 
