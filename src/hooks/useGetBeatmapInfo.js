@@ -1,4 +1,4 @@
-import { myAxios } from "@/axio"
+import { myAxios } from "@/axios"
 
 export default function useGetBeatmapInfo() {
     return async (beatmap_id) => {
@@ -6,7 +6,7 @@ export default function useGetBeatmapInfo() {
         const headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem('token')}`,
+            "Authorization": `Bearer ${localStorage.getItem('access_token')}`,
         }
 
         const response = await myAxios.get(url, { headers })
