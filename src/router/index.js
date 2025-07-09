@@ -6,7 +6,6 @@ const router = createRouter({
   routes: [
     {path: '/',component: HomeView,},
     {path: '/table',component: () => import('../views/TableView.vue')},
-    {path: '/setting',component: () => import('../views/SettingView.vue')},
   ],
 })
 

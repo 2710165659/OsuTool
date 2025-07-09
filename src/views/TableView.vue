@@ -1,42 +1,89 @@
 <template>
-  <div>
-    <el-input v-model="bid" placeholder="请输入bid"></el-input>
-    <el-button @click="getBeatmapInfoById(bid)">getBeatmap</el-button>
-
-  </div>
+  <div class="handsontable" ref="hotContainer"></div>
 </template>
 
 <script setup>
-import useGetBeatmapInfo from '@/hooks/useGetBeatmapInfo'
-import useGetToken from '@/hooks/useGetToken'
-import { ref } from 'vue'
+import Handsontable from 'handsontable'
+import 'handsontable/styles/handsontable.min.css'
+import 'handsontable/styles/ht-theme-horizon.css'
+import { reactive, ref, onMounted, onBeforeUnmount, watchEffect } from 'vue'
 
+const hotContainer = ref(null)
+let hotInstance = null
 
-const bid = ref(4962250)
-const getBeatmapInfo = useGetBeatmapInfo()
-const getToken = useGetToken()
+// 响应式数据
+const tableData = reactive([
+  [1, 'Alice', 25, 'Berlin'],
+  [2, 'Bob', 30, 'Paris'],
+  [3, 'Charlie', 28, 'New York']
+])
+const colHeaders = reactive(['BID', '说明', '歌曲名称', '难度'])
+const unuseColHeaders = reactive(['BID', '说明', '歌曲名称', '难度'])
 
-
-const getBeatmapInfoById = async (bid) => {
-  try {
-    const resp = await getBeatmapInfo(bid)
-    console.log(resp)
-  }
-  catch (error) {
-    if (error.response.status === 401) {
-      try {
-        await getToken()
-        getBeatmapInfoById(bid)
+onMounted(() => {
+  hotInstance = new Handsontable(hotContainer.value, {
+    data: tableData,
+    colHeaders: colHeaders,
+    rowHeaders: true,
+    stretchH: 'all',
+    width: '100%',
+    height: 400,
+    manualColumnResize: true, // 允许列宽调整
+    manualColumnMove: true, // 允许列拖动
+    manualRowMove: true,    // 允许行拖动
+    manualRowResize: true, // 允许行高调整
+    autoWrapRow: true, // 自动换行
+    themeName: 'ht-theme-horizon',
+    licenseKey: 'non-commercial-and-evaluation',
+    contextMenu: {
+      items: {
+        'row_above': { name: '在上方插入行' },
+        'row_below': { name: '在下方插入行' },
+        'col_left': { name: '在左侧插入列' },
+        'col_right': { name: '在右侧插入列' },
+        'remove_row': { name: '删除行' },
+        'remove_col': { name: '删除列' },
+        'undo': { name: '撤销' },
+        'redo': { name: '重做' },
+        'alignment': { name: '对齐' }
       }
-      catch (error) {
-        ElMessage.error('client_id或client_secret错误')
+    },
+
+
+    // 👇 表格列顺序变动时更新 colHeaders
+    afterColumnMove(movedColumns, finalIndex, dropIndex, movePossible, orderChanged) {
+      if (orderChanged) {
+        const newHeaders = hotInstance.getColHeader()
+        colHeaders.splice(0, colHeaders.length, ...newHeaders)
       }
-    } else {
-      ElMessage.error('获取谱面信息失败,请检查bid')
     }
-  }
-}
+  })
+})
 
+
+// watchEffect 监听数据和表头变化，刷新表格
+watchEffect(() => {
+  if (hotInstance) {
+    hotInstance.updateSettings({
+      data: tableData,
+      colHeaders: colHeaders
+    })
+  }
+})
+
+onBeforeUnmount(() => {
+  if (hotInstance) {
+    hotInstance.destroy()
+  }
+})
 </script>
 
-<style scoped></style>
+<style>
+.handsontable .ht_clone_top th {
+  font-weight: bold;
+}
+
+.handsontable .ht_clone_left th {
+  font-weight: bold;
+}
+</style>
