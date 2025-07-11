@@ -1,95 +1,96 @@
-// useFieldMapper.js
+const integratedMap = {
+  // 谱面信息
+  isDone: { name: "是否已完成", show: false },
+  description: { name: "推荐理由", show: true },
+  id: { name: "谱面ID", show: true },
+  mode: { name: "模式", show: false },
+  status: { name: "状态", show: false },
+  bpm: { name: "BPM", show: true },
+  total_length: { name: "音频总时长(秒)", show: false },
+  hit_length: { name: "游玩长度(秒)", show: false },
+  url: { name: "谱面链接", show: false },
+  version: { name: "难度名称", show: false },
+  difficulty_rating: { name: "难度星级", show: true },
+  cs: { name: "CS", show: false },
+  ar: { name: "AR", show: false },
+  accuracy: { name: "OD", show: false },
+  drain: { name: "HP", show: false },
+  max_combo: { name: "最大连击数", show: false },
+  count_circles: { name: "圆圈数", show: false },
+  count_sliders: { name: "滑条数", show: false },
+  count_spinners: { name: "转盘数", show: false },
+  passcount: { name: "过关次数", show: false },
+  playcount: { name: "游玩次数", show: false },
 
-const beatmapInfoMap = {
-  difficulty_rating: "难度星级",
-  id: "谱面ID",
-  mode: "模式",
-  status: "状态",
-  total_length: "音频总时长(秒)",
-  version: "难度名称",
-  accuracy: "OD",
-  ar: "AR",
-  bpm: "BPM",
-  count_circles: "圆圈数",
-  count_sliders: "滑条数",
-  count_spinners: "转盘数",
-  cs: "CS",
-  drain: "HP",
-  hit_length: "游玩长度(秒)",
-  passcount: "过关次数",
-  playcount: "游玩次数",
-  url: "谱面链接",
-  max_combo: "最大连击数",
-
-  owners: "谱面制作者",
-  "owners[].id": "作者ID",
-  "owners[].username": "作者用户名",
-
-  beatmapset: "谱面集信息",
-  "beatmapset.artist": "歌曲艺术家",
-  "beatmapset.artist_unicode": "艺术家(原语言)",
-  "beatmapset.covers.list@2x": "封面图", // 直接拿 list@2x，不要嵌套
-  "beatmapset.creator": "谱面集制作者",
-  "beatmapset.favourite_count": "收藏数",
-  "beatmapset.id": "谱面集ID",
-  "beatmapset.preview_url": "试听链接",
-  "beatmapset.title": "歌曲标题",
-  "beatmapset.title_unicode": "歌曲标题(原语言)",
-  "beatmapset.user_id": "谱面集作者ID",
-  "beatmapset.video": "是否含视频",
-  "beatmapset.bpm": "谱面集BPM",
-  "beatmapset.last_updated": "最后更新日期",
-  "beatmapset.ranked_date": "Ranked 日期",
-  "beatmapset.rating": "谱面评分",
-  "beatmapset.storyboard": "是否含故事板",
-  "beatmapset.submitted_date": "提交日期",
-  "beatmapset.tags": "标签"
+  // 谱面集信息
+  "beatmapset.covers.list@2x": { name: "封面图", show: false },
+  "beatmapset.id": { name: "谱面集ID", show: false },
+  "beatmapset.title": { name: "歌曲标题", show: false },
+  "beatmapset.title_unicode": { name: "歌曲标题(原语言)", show: true },
+  "beatmapset.artist": { name: "歌曲艺术家", show: false },
+  "beatmapset.artist_unicode": { name: "艺术家(原语言)", show: true },
+  "beatmapset.bpm": { name: "谱面集BPM", show: false },
+  "beatmapset.preview_url": { name: "试听链接", show: false },
+  "beatmapset.creator": { name: "谱面集作者", show: true },
+  "beatmapset.user_id": { name: "谱面集作者ID", show: false },
+  "beatmapset.source": { name: "谱面集来源", show: false },
+  "beatmapset.video": { name: "是否含视频", show: false },
+  "beatmapset.storyboard": { name: "是否含故事板", show: false },
+  "beatmapset.favourite_count": { name: "收藏数", show: false },
+  "beatmapset.rating": { name: "谱面评分", show: false },
+  "beatmapset.tags": { name: "标签", show: false },
+  "beatmapset.submitted_date": { name: "提交日期", show: false },
+  "beatmapset.last_updated": { name: "最后更新日期", show: false },
+  "beatmapset.ranked_date": { name: "Ranked 日期", show: false }
 }
 
-// 工具函数：根据路径获取嵌套值
+// 功能函数：获取嵌套对象中的值
 function getNestedValue(obj, path) {
-  const parts = path.split('.')
-  let current = obj
-
-  for (const part of parts) {
-    if (part.endsWith('[]')) {
-      const key = part.replace('[]', '')
-      if (!Array.isArray(current[key])) return undefined
-      // 递归处理数组里的对象
-      return current[key].map(item =>
-        getNestedValue(item, parts.slice(parts.indexOf(part) + 1).join('.'))
-      )
-    } else {
-      if (current && typeof current === 'object' && part in current) {
-        current = current[part]
-      } else {
-        return undefined
-      }
+  return path.split('.').reduce((acc, key) => {
+    if (acc && typeof acc === 'object') {
+      return acc[key]
     }
-  }
-  return current
+    return undefined
+  }, obj)
 }
 
-// Hook：返回映射函数
+
+
 export function useFieldMapper() {
+
+  /**
+   * 将对象映射为按顺序的数组
+   */
   function mapObject(obj) {
-    const result = {}
-
-    for (const englishKey in beatmapInfoMap) {
-      const chineseKey = beatmapInfoMap[englishKey]
-      const value = getNestedValue(obj, englishKey)
-
-      if (value !== undefined) {
-        result[chineseKey] = value
+    const result = []
+    for (const key of Object.keys(beatmapInfoMap)) {
+      const value = getNestedValue(obj, key)
+      if (typeof value !== "undefined") {
+        result.push(value)
       } else {
-        result[chineseKey] = '' // 缺失字段补''
+        // 填充默认值
+        result.push(key === "isDone" ? 1 : "")
       }
     }
-
     return result
   }
 
+  /**
+  * 按顺序返回所有字段的中文名称列表
+  */
+  function getFieldNames() {
+    return Object.values(integratedMap).map(field => field.name)
+  }
+
+  /**
+   * 按顺序返回所有字段的 show 状态列表
+   */
+  function getFieldShows() {
+    return Object.values(integratedMap).map(field => field.show)
+  }
+
   return {
-    mapObject
+    mapObject, getFieldNames, getFieldShows
   }
 }
+

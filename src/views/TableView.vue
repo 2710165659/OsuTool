@@ -1,7 +1,6 @@
 <template>
   <div>
     <div class="handsontable" ref="hotContainer"></div>
-    <el-button @click="test">测试</el-button>
   </div>
 </template>
 
@@ -9,72 +8,45 @@
 import Handsontable from 'handsontable'
 import 'handsontable/styles/handsontable.min.css'
 import 'handsontable/styles/ht-theme-horizon.css'
-import { reactive, ref, onMounted, onBeforeUnmount, watchEffect } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useFieldMapper } from '@/hook/useFieldMapper'
+import { ElMessage } from 'element-plus'
 
+
+
+const { mapObject, getFieldNames, getFieldShows } = useFieldMapper()
 const hotContainer = ref(null)
 let hotInstance = null
 
-const test = () => {
-  // console.log(colHeaders)
-  // console.log(tableData)
-  colHeaders.push('aaa')
+
+function visualIndexWithoutHidden_to_visualIndexWithHidden(visualIndexWithoutHidden) {
+  // visualIndex从1开始，不包含隐藏列
+  // getColHeader传入的索引是视觉索引，从0开始，包含隐藏列
+  const hiddenColumns = hotInstance.getPlugin('hiddenColumns')
+  const totalCols = hotInstance.countCols()
+  let visibleCount = 0
+  for (let col = 0; col < totalCols; col++) {
+    if (!hiddenColumns.isHidden(col)) {
+      visibleCount++
+      if (visibleCount === visualIndexWithoutHidden) {
+        return col
+      }
+    }
+  }
+  ElMessage.error('未知错误')
+  return -1
 }
 
-// 响应式数据
-const alllHeaders = reactive([
-  "难度星级",
-  "谱面ID",
-  "模式",
-  "状态",
-  "音频总时长(秒)",
-  "难度名称",
-  "OD",
-  "AR",
-  "BPM",
-  "圆圈数",
-  "滑条数",
-  "转盘数",
-  "CS",
-  "HP",
-  "游玩长度(秒)",
-  "过关次数",
-  "游玩次数",
-  "谱面链接",
-  "最大连击数",
-  "谱面制作者",
-  "作者ID",
-  "作者用户名",
-  "谱面集信息",
-  "歌曲艺术家",
-  "艺术家(原语言)",
-  "封面图",
-  "谱面集制作者",
-  "收藏数",
-  "谱面集ID",
-  "试听链接",
-  "歌曲标题",
-  "歌曲标题(原语言)",
-  "谱面集作者ID",
-  "是否含视频",
-  "谱面集BPM",
-  "最后更新日期",
-  "Ranked 日期",
-  "谱面评分",
-  "是否含故事板",
-  "提交日期",
-  "标签"
-])
 
-const initlHeaders = reactive(['谱面ID', '说明', '歌曲标题(原语言)', '艺术家(原语言)', '难度星级'])
 
 onMounted(() => {
   hotInstance = new Handsontable(hotContainer.value, {
-    colHeaders: initlHeaders, // 不是双向绑定
+    colHeaders: getFieldNames(),
     rowHeaders: true,
     stretchH: 'all',
     width: '100%',
     height: 400,
-    minCols: initlHeaders.length,
+    minCols: getFieldNames().length,
     manualColumnResize: true, // 允许列宽调整
     manualColumnMove: true, // 允许列拖动
     manualRowMove: true,    // 允许行拖动
@@ -95,29 +67,27 @@ onMounted(() => {
         'alignment': { name: '对齐' }
       }
     },
-
-
-    // 表格列顺序变动时更新 colHeaders
-    afterColumnMove(movedColumns, finalIndex, dropIndex, movePossible, orderChanged) {
-      if (orderChanged && movePossible) {
-        const newHeaders = this.getColHeader()
-        console.log('newHeaders', newHeaders)
-      }
+    hiddenColumns: {
+      copyPasteEnabled: false,
     },
   })
 
+  // 允许编辑表头
   hotInstance.addHook('afterRender', () => {
-    if (!hotContainer.value) return; // 防止 hotContainer.value 为空报错
+    if (!hotContainer.value) return // 防止 hotContainer.value 为空报错
 
-    const headerElems = hotContainer.value.querySelectorAll('.ht_clone_top th');
-    if (!headerElems.length) return; // 防止 th 没渲染好报错
+    const headerElems = hotContainer.value.querySelectorAll('.ht_clone_top th')
 
-    headerElems.forEach((th, index) => {
+    if (!headerElems.length) return // 防止 th 没渲染好报错
+
+    headerElems.forEach((th, visualIndex) => {
       // 解绑之前事件，避免重复绑定
       th.ondblclick = null;
 
       th.ondblclick = (e) => {
-        const oldHeader = hotInstance.getColHeader(index - 1);
+        const trueVisualIndex = visualIndexWithoutHidden_to_visualIndexWithHidden(visualIndex)
+        const oldHeader = hotInstance.getColHeader(trueVisualIndex)
+
         const input = document.createElement('input')
         input.type = 'text'
         input.value = oldHeader
@@ -138,7 +108,7 @@ onMounted(() => {
         input.addEventListener('blur', () => {
           const newHeader = input.value.trim() || oldHeader
           const headers = hotInstance.getSettings().colHeaders
-          const physicalIndex = hotInstance.toPhysicalColumn(index - 1) // 列索引
+          const physicalIndex = hotInstance.toPhysicalColumn(trueVisualIndex)
           headers[physicalIndex] = newHeader
           hotInstance.updateSettings({ colHeaders: headers })
           document.body.removeChild(input)
@@ -152,13 +122,19 @@ onMounted(() => {
   })
 
 
+  // 隐藏不显示的列
+  const plugin = hotInstance.getPlugin('hiddenColumns')
+  const hiddenIndexes = getFieldShows().reduce((indices, show, index) =>
+    !show ? [...indices, index] : indices, []);
+  plugin.hideColumns(hiddenIndexes)
 
-
+  hotInstance.render() // 初始渲染
 })
+
 
 </script>
 
-<style scoped>
+<style>
 .handsontable .ht_clone_top th {
   font-weight: bold;
 }
