@@ -1,7 +1,7 @@
 const integratedMap = {
-  // 谱面信息
+  // 内部保留
   isDone: { name: "是否已完成", show: false },
-  description: { name: "推荐理由", show: true },
+  // 谱面信息
   id: { name: "谱面ID", show: true },
   mode: { name: "模式", show: false },
   status: { name: "状态", show: false },
@@ -9,6 +9,7 @@ const integratedMap = {
   total_length: { name: "音频总时长(秒)", show: false },
   hit_length: { name: "游玩长度(秒)", show: false },
   url: { name: "谱面链接", show: false },
+  // 谱面难度相关
   version: { name: "难度名称", show: false },
   difficulty_rating: { name: "难度星级", show: true },
   cs: { name: "CS", show: false },
