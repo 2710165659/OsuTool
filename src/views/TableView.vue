@@ -15,11 +15,20 @@ import 'handsontable/styles/ht-theme-horizon.css'
 import { ref, onMounted, createApp, render } from 'vue'
 import { useFieldMapper } from '@/hook/useFieldMapper'
 import BeatmapInfoTable from '@/components/BeatmapInfoTable.vue'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const { mapObject, getFieldNames, getFieldShows } = useFieldMapper()
 
+const hotData = ref([[], [], [], [], []])
 const hotTable = ref(null)
 let hot = null
+
+
+const rowStatus = ref({
+  // 1: 'success',  // 成功获取
+  // 2: 'failed',   // 获取失败
+})
 
 const dialogVisible = ref(false)
 let resolveSelected
@@ -42,6 +51,7 @@ const openSelectDialog = async () => {
 
 const settings = {
   colHeaders: getFieldNames(),
+  data: hotData.value,
   rowHeaders: true,
   stretchH: 'all',
   width: '100%',
@@ -111,11 +121,26 @@ const settings = {
           break
         }
 
-        case 'data:get': {
-          break
-        }
-
-        case 'data:get:row': {
+        case 'data:row': {
+          const handelBids = []
+          const handelIndices = []
+          const inValidRows = []
+          for (let i = 0; i < selectedRows.length; i++) {
+            const row = selectedRows[i]
+            const bid = hotData.value[row][1] // 只接受纯数字
+            if (/^\d+$/.test(String(bid).trim())) {
+              handelBids.push(bid)
+              handelIndices.push(row)
+            }
+            else inValidRows.push(row + 1)
+          }
+          if (handelBids.length === 0) return
+          // 一次最多获取50个谱面
+          while (handelBids.length > 0) {
+            const batchBids = handelBids.splice(0, 50)
+            const batchIndices = handelIndices.splice(0, 50)
+            await loadData(batchBids, batchIndices)
+          }
           break
         }
 
@@ -171,8 +196,7 @@ const settings = {
         name: '数据操作',
         submenu: {
           items: [
-            { key: 'data:get', name: '获取所有未知数据' },
-            { key: 'data:get:row', name: '强制刷新行数据' },
+            { key: 'data:row', name: '获取选中行数据' },
             { key: 'data:add', name: '添加谱面信息...' },
             { key: 'data:download', name: '保存表格为xlsx文件' },
           ]
@@ -183,6 +207,18 @@ const settings = {
     }
   },
 
+  // 行号样式修改
+  afterGetRowHeader(row, th) {
+    const status = rowStatus.value[row]
+    th.classList.remove('row-header-success', 'row-header-failed', 'row-header-pending')
+    if (status === 'success') {
+      th.classList.add('row-header-success')
+    } else if (status === 'failed') {
+      th.classList.add('row-header-failed')
+    } else {
+      th.classList.add('row-header-pending')
+    }
+  },
 
   // 双击表头编辑
   afterGetColHeader(col, th) {
@@ -276,6 +312,38 @@ function isAllColumnsSelected() {
 function isAllRowsSelected() {
   return hot.countRows() === getSelectedRows().length
 }
+
+async function loadData(bids, rows) {
+  const indices = bids.map((v, i) => i).sort((a, b) => bids[a] - bids[b])
+  bids.splice(0, bids.length, ...indices.map(i => bids[i]))
+  rows.splice(0, rows.length, ...indices.map(i => rows[i]))
+  console.log(bids)
+  console.log(rows)
+  console.log(hotData.value[rows[0]][1])
+
+  const resp = await axios.get(`https://osu.xywork.top/?ids=${bids.join(',')}`)
+  const beatmaps = resp.data.beatmaps.map(item => mapObject(item))
+  const failedRows = []
+  let p1 = 0, p2 = 0
+  while (p1 < rows.length && p2 < beatmaps.length) {
+    if (hotData.value[rows[p1]][1] == beatmaps[p2][1]) {
+      for (let i = 0; i < beatmaps[p2].length; i++) {
+        hotData.value[rows[p1]][i] = beatmaps[p2][i];
+      }
+      rowStatus.value[rows[p1]] = 'success'
+      p1++, p2++
+    }
+    else {
+      failedRows.push(rows[p1] + 1)
+      rowStatus.value[rows[p1]] = 'failed'
+      p1++
+    }
+  }
+
+  console.log(beatmaps)
+  hot.render()
+}
+
 //#endregion
 
 onMounted(() => {
@@ -300,7 +368,23 @@ onMounted(() => {
   font-weight: bold;
 }
 
-.handsontable .ht_clone_left th {
+
+/*  三状态行号颜色 */
+.handsontable .ht_clone_left th.row-header-success {
+  background-color: #d4edda !important;
+  color: #155724;
+  font-weight: bold;
+}
+
+.handsontable .ht_clone_left th.row-header-pending {
+  background-color: #fff3cd !important;
+  color: #856404;
+  font-weight: bold;
+}
+
+.handsontable .ht_clone_left th.row-header-failed {
+  background-color: #f8d7da !important;
+  color: #721c24;
   font-weight: bold;
 }
 </style>

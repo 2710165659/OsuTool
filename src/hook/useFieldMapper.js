@@ -64,7 +64,7 @@ export function useFieldMapper() {
    */
   function mapObject(obj) {
     const result = []
-    for (const key of Object.keys(beatmapInfoMap)) {
+    for (const key of Object.keys(integratedMap)) {
       const value = getNestedValue(obj, key)
       if (typeof value !== "undefined") {
         result.push(value)
