@@ -1,7 +1,8 @@
 <template>
   <div class="container">
     <HotTable class="handsontable" ref="hotTable" :settings="settings" width="100%" height="500" />
-    <BeatmapInfoTable v-model="dialogVisible" :hot="hot" @selected="handleSelected" />
+    <BeatmapInfoTable v-model="dialogVisible" :initialColHeaders="getFieldNames()" :hot="hot"
+      @selected="handleSelected" />
   </div>
 </template>
 
@@ -19,7 +20,6 @@ const { mapObject, getFieldNames, getFieldShows } = useFieldMapper()
 
 const hotTable = ref(null)
 let hot = null
-const initialColHeaders = getFieldNames()
 
 const dialogVisible = ref(false)
 let resolveSelected
@@ -40,13 +40,12 @@ const openSelectDialog = async () => {
   })
 }
 
-
 const settings = {
-  colHeaders: initialColHeaders,
+  colHeaders: getFieldNames(),
   rowHeaders: true,
   stretchH: 'all',
   width: '100%',
-  minCols: initialColHeaders.length,
+  minCols: getFieldNames().length,
   manualColumnResize: true,
   manualColumnMove: true,
   manualRowMove: true,
@@ -85,37 +84,59 @@ const settings = {
           selectedCols.forEach(col => {
             const phyCol = this.toPhysicalColumn(col)
             // 如果是自定义列，则删除，否则隐藏
-            if (phyCol >= initialColHeaders.length) {
+            if (phyCol >= getFieldNames().length) {
               this.alter('remove_col', col - col_count)
+              console.log(`删除列: ${col}`)
               col_count++
             } else {
               const hiddenPlugin = this.getPlugin('hiddenColumns')
               hiddenPlugin.hideColumn(col)
+              console.log(`隐藏列: ${col}`)
             }
           })
           break
         }
 
         case 'col:left': {
-          const insertCols = await openSelectDialog()
           const movePlugin = this.getPlugin('manualColumnMove')
-          const hiddenPlugin = this.getPlugin('hiddenColumns')
-
-          if (insertCols[0] === 0) {
-            this.alter('insert_col_end', this.countCols())
-            movePlugin.moveColumn(this.countCols() - 1, selectedCols[0])
-            insertCols.shift()
-          }
-          hiddenPlugin.showColumns(insertCols)
-          movePlugin.moveColumns(insertCols, selectedCols[0])
-
+          this.alter('insert_col_end', this.countCols())
+          movePlugin.moveColumn(this.countCols() - 1, selectedCols[0])
           break
         }
 
         case 'col:right': {
-          const selectd = await openSelectDialog()
-          console.log(selectd)
+          const movePlugin = this.getPlugin('manualColumnMove')
+          this.alter('insert_col_end', this.countCols())
+          movePlugin.moveColumn(this.countCols() - 1, selectedCols[0] + 1)
+          break
+        }
 
+        case 'data:get': {
+          break
+        }
+
+        case 'data:get:row': {
+          break
+        }
+
+        case 'data:add': {
+          const showIndices = await openSelectDialog()
+          if (!showIndices || showIndices.length === 0) return
+          const hiddenPlugin = this.getPlugin('hiddenColumns')
+
+          for (let i = 1; i < showIndices.length; i++) {
+            const visualCol = this.toVisualColumn(i)
+            if (showIndices[i] && hiddenPlugin.isHidden(visualCol)) {
+              hiddenPlugin.showColumn(visualCol)
+            }
+            if (!showIndices[i] && !hiddenPlugin.isHidden(visualCol)) {
+              hiddenPlugin.hideColumn(visualCol)
+            }
+          }
+          break
+        }
+
+        case 'data:download': {
           break
         }
       }
@@ -141,10 +162,21 @@ const settings = {
         submenu: {
           items: [
             { key: 'col:delete', name: '删除选中列', disabled() { return isAllColumnsSelected() } },
-            { key: 'col:left', name: '在左侧插入自定义列...', disabled() { return getSelectedColumns().length !== 1 }, },
-            { key: 'col:right', name: '在右侧插入自定义列...', disabled() { return getSelectedColumns().length !== 1 } },
+            { key: 'col:left', name: '在左侧插入列', disabled() { return getSelectedColumns().length !== 1 }, },
+            { key: 'col:right', name: '在右侧插入列', disabled() { return getSelectedColumns().length !== 1 } },
           ]
         },
+      },
+      data: {
+        name: '数据操作',
+        submenu: {
+          items: [
+            { key: 'data:get', name: '获取所有未知数据' },
+            { key: 'data:get:row', name: '强制刷新行数据' },
+            { key: 'data:add', name: '添加谱面信息...' },
+            { key: 'data:download', name: '保存表格为xlsx文件' },
+          ]
+        }
       },
       split: { name: '---------' },
       alignment: { name: '单元格对齐' },

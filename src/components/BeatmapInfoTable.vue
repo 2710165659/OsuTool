@@ -1,11 +1,10 @@
 <template>
   <el-dialog v-model="localVisible" title="请选择" width="60%" @close="onClose">
     <div class="grid-container">
-      <el-card v-for="(item, index) in data" :key="index"
-        :class="{ selected: selectedIndices.includes(index), disabled: disableSelectd.includes(index) }"
-        class="grid-item" @click="toggleSelect(index)">
+      <el-card v-for="(item, index) in data.slice(1)" :key="index + 1"
+        :class="{ selected: selectedIndices[index + 1] == 1 }" class="grid-item" @click="toggleSelect(index + 1)">
         <div class="content">{{ item }}</div>
-        <div class="corner-icon" v-if="selectedIndices.includes(index)">
+        <div class="corner-icon" v-if="selectedIndices[index + 1] == 1">
           <el-icon>
             <Check />
           </el-icon>
@@ -24,44 +23,34 @@
 import { ref, watch } from 'vue'
 import { Check } from '@element-plus/icons-vue'
 
-const props = defineProps(['modelValue', 'hot'])
+const props = defineProps(['modelValue', 'hot', 'initialColHeaders'])
 const emit = defineEmits(['selected'])
 
 const localVisible = ref(false)
-const data = ref([])
-const disableSelectd = ref([])
 
-const selectedIndices = ref([])
+const data = ref([]) // 数据
+const selectedIndices = ref([]) // 0为不选，1为选择
 
 // 监听弹窗显示，打开时刷新data
 watch(() => props.modelValue, (val) => {
   localVisible.value = val
   if (val) {
-    data.value = props.hot.getColHeader()
-    selectedIndices.value = []
-    disableSelectd.value = []
+    data.value = props.initialColHeaders
+    selectedIndices.value = new Array(props.initialColHeaders.length).fill(1)
 
-    data.value[0] = '自定义内容'
-    // 获取所有隐藏列索引
+    // 判断隐藏
     const hiddenPlugin = props.hot.getPlugin('hiddenColumns')
     if (hiddenPlugin) {
-      const colCount = props.hot.countCols()
-      for (let i = 1; i < colCount; i++) {
-        if (!hiddenPlugin.isHidden(i)) disableSelectd.value.push(i)
+      for (let i = 0; i < data.value.length; i++) {
+        const visibleCol = props.hot.toVisualColumn(i)
+        if (hiddenPlugin.isHidden(visibleCol)) selectedIndices.value[i] = 0
       }
     }
   }
 })
 
 function toggleSelect(index) {
-  if (disableSelectd.value.includes(index)) return
-
-  const i = selectedIndices.value.indexOf(index)
-  if (i >= 0) {
-    selectedIndices.value.splice(i, 1)
-  } else {
-    selectedIndices.value.push(index)
-  }
+  selectedIndices.value[index] = selectedIndices.value[index] ? 0 : 1
 }
 
 function confirmSelect() {
@@ -70,7 +59,7 @@ function confirmSelect() {
 }
 
 function onClose() {
-  emit('selected', []) // 关闭时也发空数组
+  emit('selected', [])
   localVisible.value = false
 }
 </script>
@@ -100,12 +89,6 @@ function onClose() {
 .grid-item.selected {
   border: 2px solid #409EFF;
   background-color: #ecf5ff;
-}
-
-.grid-item.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-  cursor: not-allowed;
 }
 
 .corner-icon {
