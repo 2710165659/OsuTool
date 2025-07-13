@@ -317,9 +317,6 @@ async function loadData(bids, rows) {
   const indices = bids.map((v, i) => i).sort((a, b) => bids[a] - bids[b])
   bids.splice(0, bids.length, ...indices.map(i => bids[i]))
   rows.splice(0, rows.length, ...indices.map(i => rows[i]))
-  console.log(bids)
-  console.log(rows)
-  console.log(hotData.value[rows[0]][1])
 
   const resp = await axios.get(`https://osu.xywork.top/?ids=${bids.join(',')}`)
   const beatmaps = resp.data.beatmaps.map(item => mapObject(item))
@@ -340,7 +337,6 @@ async function loadData(bids, rows) {
     }
   }
 
-  console.log(beatmaps)
   hot.render()
 }
 
