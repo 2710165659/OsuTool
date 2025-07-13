@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <HotTable class="handsontable" ref="hotTable" :settings="settings" width="100%" height="500" />
+    <HotTable class="handsontable" ref="hotTable" :settings="settings" width="95vw" height="95vh" />
     <BeatmapInfoTable v-model="dialogVisible" :initialColHeaders="getFieldNames()" :hot="hot"
       @selected="handleSelected" />
   </div>
@@ -198,7 +198,7 @@ const settings = {
           items: [
             { key: 'data:row', name: '获取选中行数据' },
             { key: 'data:add', name: '添加谱面信息...' },
-            { key: 'data:download', name: '保存表格为xlsx文件' },
+            // { key: 'data:download', name: '保存表格为xlsx文件(未完成)' },
           ]
         }
       },
