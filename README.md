@@ -1,6 +1,7 @@
 # OsuTool
 
 一个基于Vue 3的osu!谱面信息获取应用
+访问网站：https://osutool.xywork.top
 
 ## 技术栈
 
@@ -10,11 +11,18 @@
 - JavaScript
 - Handsontable (表格组件)
 
-## 功能特性
+## 功能
 
 - 根据bid批量获取谱面信息
 - 使用Handsontable实现表格功能
 - 后端采用cloudflare workers实现
+
+## 截图
+
+![](src/assets/tip1.png)
+![](src/assets/tip2.png)
+![](src/assets/tip3.png)
+![](src/assets/tip4.png)
 
 ## 安装指南
 
